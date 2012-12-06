@@ -1,6 +1,7 @@
 package mygame;
 
 import com.jme3.app.SimpleApplication;
+import com.jme3.asset.AssetKey;
 import com.jme3.bullet.control.CharacterControl;
 import com.jme3.bullet.control.GhostControl;
 import com.jme3.bullet.control.RigidBodyControl;
@@ -39,7 +40,7 @@ import java.util.Random;
  * @author normenhansen
  */
 public class Main extends SimpleApplication {
-
+    
     Boolean isRunning = true;
     Node shootables;
     Node keep;
@@ -65,16 +66,16 @@ public class Main extends SimpleApplication {
     ArrayList<Boxer> boxList = new ArrayList<Boxer>();
     int howManySent = 0;
     String alphabet = "abcdefghijklmopqrstuvwxyz";
-
+    
     private class Boxer {
-
-        int id = 0;
+        
+        String id;
         boolean scored = false;
         Geometry body;
         float moved = 0;
         Vector3f position;
     }
-
+    
     public static void main(String[] args) {
 
 
@@ -100,8 +101,8 @@ public class Main extends SimpleApplication {
         app.setSettings(cfg);
         app.start();
         app.start();
-
-
+        
+        
     }
 //    void setPositions(int _count) {
 //
@@ -128,7 +129,7 @@ public class Main extends SimpleApplication {
      * A cube object for target practice
      */
     int k = 0;
-
+    
     protected Geometry makeCube(int i, char type, boolean real) {
         Boxer temp = new Boxer();
         temp.moved = 0f;
@@ -143,13 +144,15 @@ public class Main extends SimpleApplication {
         temp.position.y = starty;
         temp.position.z = startz;
         Box box = new Box(temp.position, boxSize, boxSize, boxSize);
-
+        
         temp.body = new Geometry(i + "", box);
         Material mat1 = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         Texture tex_ml;
         tex_ml = assetManager.loadTexture("Textures/" + type + ".png");
         mat1.setTexture("ColorMap", tex_ml);
         temp.body.setMaterial(mat1);
+        temp.id = temp.body.getName();
+        System.out.println("this box is intially created with name: " + temp.id);
         boxList.add(temp);
         //Box box = new Box(position[i], boxSize, boxSize, boxSize);
         // Geometry cube = new Geometry(i + "", box);
@@ -161,10 +164,10 @@ public class Main extends SimpleApplication {
         return temp.body;
         // System.out.println("Number of cube added: " + shootables.getQuantity());
     }
-
+    
     @Override
     public void simpleInitApp() {
-
+        
         word = 7;
         initCrossHairs(); // a "+" in the middle of the screen to help aiming
         initKeys();       // load custom key mappings
@@ -182,38 +185,41 @@ public class Main extends SimpleApplication {
         DirectionalLight sun = new DirectionalLight();
         sun.setDirection(new Vector3f(-0.1f, -0.7f, -1.0f));
         rootNode.addLight(sun);
-
-
+        
+        
         rootNode.attachChild(shootables);
         rootNode.attachChild(keep);
         /*
          * Initalized our output buffer
          */
         char temp;
+        Geometry tempGeo;
         for (int i = 0; i < word; i++) {
             Random r = new Random();
             if (r.nextBoolean()) {
                 temp = curWord.charAt(r.nextInt(curWord.length()));
-                shootables.attachChild(makeCube(i, temp, true));
-                System.out.println("Real box " + temp + " was made.");
+                tempGeo = makeCube(i, temp, true);
+                shootables.attachChild(tempGeo);
+                System.out.println("Real box " + temp + " was made. name: " + tempGeo.getName());
                 howManySent++;
             } else {
                 temp = alphabet.charAt(r.nextInt(alphabet.length()));
                 while (curWord.contains(temp + "")) {
                     temp = alphabet.charAt(r.nextInt(alphabet.length()));
                 }
-                shootables.attachChild(makeCube(i, temp, false));
-                System.out.println("Fake box " + temp + " was made.");
-
+                tempGeo = makeCube(i, temp, false);
+                shootables.attachChild(tempGeo);
+                System.out.println("Fake box " + temp + " was made. hash: " + tempGeo.getName());
+                
             }
         }
-
+        
         keep.attachChild(makeFloor());
 
         /*
          * Setting the GUI
          */
-
+        
         guiFont = assetManager.loadFont("Interface/Fonts/Default.fnt");
         nodeHealth = new BitmapText(guiFont, true);
         nodeScore = new BitmapText(guiFont, true);
@@ -243,7 +249,7 @@ public class Main extends SimpleApplication {
         guiNode.attachChild(nodeHealth);
         guiNode.attachChild(nodeWord);
         guiFont = assetManager.loadFont("Interface/Fonts/Default.fnt");
-
+        
         pauseText = new BitmapText(guiFont, false);
         pauseText.setSize(guiFont.getCharSet().getRenderedSize() * 4);
         pauseText.setText("---PAUSED---");
@@ -254,28 +260,30 @@ public class Main extends SimpleApplication {
         //  Material mat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
 
     }
-
+    
     @Override
     public void simpleUpdate(float tpf) {
         if (isRunning) {
-
+            
             pauseText.removeFromParent();
             for (int i = 0; i < shootables.getQuantity(); i++) {
                 shootables.getChild(i).move(0f, 0f, 0.05f);
-
-                // moved[i] += 0.05f;
-                // if (moved[i] >= 15.f) {
-                //     moved[i] = 0;
-
-                //     shootables.getChild(i).move(0f, 0f, -15f);
-                //   }
-            }
-            if (shootables.getQuantity() == word) {
-                // System.out.println("* No blocks have been hit");
-            } else {
-                for (int i = 0; i < word; i++) {
-                    //shootables.
+                boxList.get(i).moved += 0.05f;
+                if (boxList.get(i).moved >= 15.0f) {
+                    boxList.get(i).moved = 0;
+                    shootables.getChild(i).move(0f, 0f, -15f);
+                    if (boxList.get(i).scored) {
+                        curScore += 10;
+                        curHealth += 1;
+                        if (curHealth > 100) {
+                            curHealth = 100;
+                        }
+                    } else {
+                        curScore -= 1;
+                        curHealth -= 10;
+                    }
                 }
+                
             }
             nodeScore.setLocalTranslation(
                     settings.getWidth() - nodeScore.getLineWidth(),
@@ -290,10 +298,10 @@ public class Main extends SimpleApplication {
              */
             // guiNode.detachAllChildren();
             guiNode.attachChild(pauseText);
-
+            
         }
     }
-
+    
     private void initKeys() {
         inputManager.addMapping("Pause", new KeyTrigger(KeyInput.KEY_P));
         inputManager.addMapping("Shoot",
@@ -361,7 +369,7 @@ public class Main extends SimpleApplication {
      * A floor to show that the "shot" can go through several objects.
      */
     protected Geometry makeFloor() {
-
+        
         Box box = new Box(new Vector3f(0, -4, -5), 15, .2f, 15);
         Geometry floor = new Geometry("the Floor", box);
         Material mat1 = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
@@ -395,7 +403,7 @@ public class Main extends SimpleApplication {
                 settings.getHeight() / 2 + ch.getLineHeight() / 2, 0);
         guiNode.attachChild(ch);
     }
-
+    
     void placeItem(Node item, Vector3f spot) {
         //remove item from the inventory
         item.removeFromParent();
