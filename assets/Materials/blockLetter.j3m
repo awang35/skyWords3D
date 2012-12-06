@@ -1,0 +1,15 @@
+Material ABlock : Common/MatDefs/Light/Lighting.j3md {
+     MaterialParameters {
+        DiffuseMap : Textures/a.png
+        Shininess : 5.0
+        UseMaterialColors : false
+        PackedNormalParallax : false
+        EnvMapAsSphereMap : false
+        SeparateTexCoord : false
+     }
+    AdditionalRenderState {
+      PointSprite On
+      ColorWrite On
+      DepthTest Off
+    }
+}
