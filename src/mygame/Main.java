@@ -1,18 +1,5 @@
 package mygame;
 
-import java.lang.reflect.Array;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.List;
-import javax.swing.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-//import net.proteanit.sql.DbUtils;
-import net.proteanit.sql.DbUtils;
 import com.jme3.app.SimpleApplication;
 import com.jme3.asset.AssetKey;
 import com.jme3.bullet.control.CharacterControl;
@@ -45,6 +32,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
@@ -76,28 +64,37 @@ public class Main extends SimpleApplication {
     BitmapText finalScore;
     private int curScore = 0;
     private int curHealth = 100;
-    String curWord = "Totallyasrs";
+    static String curWord = "Totallyasrs";
     GhostControl ghostScoreBox;
     BitmapText pauseText;
     ArrayList<Boxer> boxList = new ArrayList<Boxer>();
     int howManySent = 0;
+    
+    
     String alphabet = "abcdefghijklmopqrstuvwxyz";
     //String seen = "";
     boolean ifSeen[];
+    Main currentApp;
+    public static int score;
+    public static int wordCount = 0;
+    public static int timePlayed = 0;
+    public Main() {
+        super();
+
+    }
 
     private class Boxer {
-
+        char character;
         String id;
-        boolean scored = false;
+       // boolean scored = false;
         Geometry body;
         float moved = 0;
         Vector3f position;
     }
-
-    public static void main(String[] args) {
-
-
-        //Main app = new Main();
+static List<String> Words;
+   
+    public static void startMe(List<String> words) {
+        curWord = words.get(wordCount);
         Main app = new Main();
 
         AppSettings cfg = new AppSettings(false);
@@ -121,12 +118,27 @@ public class Main extends SimpleApplication {
         app.setSettings(cfg);
         app.setDisplayFps(false);
         app.setDisplayStatView(false);
+        app.start();
+        //Main app = new Main();
+
 
         // app.setShowSettings(false);
-        app.start();
+        //  app.start();
 
 
 
+    }
+    int last = 0;
+    boolean checkMatch(char check){
+        for (int i = 0;i<curWord.length();i++){
+            if(curWord.charAt(i)==check){
+               // ifSeen[i] = true;
+                last = i;
+                return true;
+            }
+        }
+        
+        return false;
     }
 //    void setPositions(int _count) {
 //
@@ -153,11 +165,13 @@ public class Main extends SimpleApplication {
      * A cube object for target practice
      */
     int k = 0;
-
+    
     protected Geometry makeCube(int i, char type, boolean real) {
+       int k =0;
         Boxer temp = new Boxer();
+        temp.character = type;
         temp.moved = 0f;
-        temp.scored = real;
+       // temp.scored = real;
         temp.position = new Vector3f();
         if (i % 2 == 0) {
             temp.position.x = -k;
@@ -229,7 +243,7 @@ public class Main extends SimpleApplication {
                     tempInt = r.nextInt(curWord.length());
                     temp = curWord.toLowerCase().charAt(tempInt);
                 }
-                ifSeen[tempInt] = true;
+                //ifSeen[tempInt] = true;
                 tempGeo = makeCube(i, temp, true);
                 shootables.attachChild(tempGeo);
                 System.out.println("Real box " + temp + " was made. name: " + tempGeo.getName());
@@ -252,7 +266,7 @@ public class Main extends SimpleApplication {
         /*
          * Setting the GUI
          */
-        
+
         guiFont = assetManager.loadFont("Interface/Fonts/Default.fnt");
         nodeHealth = new BitmapText(guiFont, true);
         nodeScore = new BitmapText(guiFont, true);
@@ -293,15 +307,15 @@ public class Main extends SimpleApplication {
         //  Material mat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
 
     }
-
+ 
     public boolean checkWin() {
         int count = 0;
         for (int i = 0; i < curWord.length(); i++) {
-            if (ifSeen[i]) {
-                count++;
-            }
+            if (ifSeen[i]) { count++;}
         }
         if (count == curWord.length() - 1) {
+            wordCount++;
+            //TODO - increment word
             return true;
         }
         return false;
@@ -310,29 +324,38 @@ public class Main extends SimpleApplication {
     @Override
     public void simpleUpdate(float tpf) {
         if (isRunning) {
-            if(time!=0&&(time+20)>timer.getTimeInSeconds()){
-               wrongHit.removeFromParent();
-                time =0;
+            if (time != 0 && (time + 20) > timer.getTimeInSeconds()) {
+                wrongHit.removeFromParent();
+                time = 0;
             }
             pauseText.removeFromParent();
             for (int i = 0; i < shootables.getQuantity(); i++) {
                 shootables.getChild(i).move(0f, 0f, 0.05f);
                 boxList.get(i).moved += 0.05f;
                 if (boxList.get(i).moved >= 18.0f) {
-                    boxList.get(i).moved = 0;
-                    shootables.getChild(i).move(0f, 0f, -18f);
-                    if (boxList.get(i).scored) {
-                        curScore += 10;
+                    
+                    
+                   // boxList.get(i).moved = 0;
+                    //shootables.getChild(i).move(0f, 0f, -18f);
+                    if (checkMatch(boxList.get(i).character)) {
+                        
+                        
+                        ifSeen[last] = true;
+                        curScore += 100;
                         curHealth += 1;
-                        if (curHealth > 100) {
+                        if (curHealth >= 100) {
                             curHealth = 100;
                         }
+                        if(checkWin()){
+                            System.out.println("NEXT WORD!");
+                        }
                     } else {
-                        curScore -= 1;
+                        curScore -= 10;
                         curHealth -= 20;
-                        if (curHealth < 0) {
+                        if (curHealth <= 0) {
                             curHealth = 0;
                             isRunning = false;
+                            score= curScore;
                             /**
                              * Uses Texture from jme3-test-data library!
                              */
@@ -356,6 +379,8 @@ public class Main extends SimpleApplication {
 
                         }
                     }
+                    shootables.detachChild(shootables.getChild(boxList.get(i).id));
+                    shootables.attachChild(setWord(boxList.get(i).id));
                 }
 
             }
@@ -375,21 +400,22 @@ public class Main extends SimpleApplication {
 
         }
     }
-    char nextLetter;
+    
 
-    private boolean getLetter() {
+    private char getLetter() {
+         char nextLetter;
         Random r = new Random();
-        if (r.nextBoolean() && !checkWin()) {
+        if (r.nextBoolean() ) {
             int tempInt = r.nextInt(curWord.length());
             nextLetter = curWord.toLowerCase().charAt(tempInt);
             while (ifSeen[tempInt]) {
                 tempInt = r.nextInt(curWord.length());
                 nextLetter = curWord.toLowerCase().charAt(tempInt);
             }
-            ifSeen[tempInt] = true;
+            
             System.out.println("Real box " + nextLetter + " was made");
             howManySent++;
-            return true;
+            return nextLetter;
         } else {
             nextLetter = alphabet.charAt(r.nextInt(alphabet.length()));
             while (curWord.contains(nextLetter + "")) {
@@ -397,29 +423,30 @@ public class Main extends SimpleApplication {
             }
             System.out.println("Fake box " + nextLetter + " was made.");
         }
-        return false;
+        return nextLetter;
     }
 
     private Geometry setWord(String input) {
         Iterator it = boxList.iterator();
         k = 0;
-        
+
         while (it.hasNext()) {
             Boxer check = (Boxer) it.next();
             if (check.id.equals(input)) {
                 Boxer temp = new Boxer();
-     
+
                 temp = check;
                 boxList.remove(check);
                 int i = Integer.parseInt(temp.id);
                 temp.moved = 0f;
-                temp.scored = getLetter();
+               // temp.scored = getLetter();
+                temp.character = getLetter();
                 temp.position = new Vector3f();
                 if (i % 2 == 0) {
-                    if(i==0){
-                        temp.position.x =0;
-                    }else{
-                    temp.position.x = -(k+i);
+                    if (i == 0) {
+                        temp.position.x = 0;
+                    } else {
+                        temp.position.x = -(k + i);
                     }
                 } else {
                     k = i + 1;
@@ -428,11 +455,11 @@ public class Main extends SimpleApplication {
                 temp.position.y = starty;
                 temp.position.z = startz;
                 Box box = new Box(temp.position, boxSize, boxSize, boxSize);
-                System.out.println("New position: "+temp.position);
+                System.out.println("New position: " + temp.position);
                 temp.body = new Geometry(i + "", box);
                 Material mat1 = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
                 Texture tex_ml;
-                tex_ml = assetManager.loadTexture("Textures/" + nextLetter + ".png");
+                tex_ml = assetManager.loadTexture("Textures/" + temp.character + ".png");
                 mat1.setTexture("ColorMap", tex_ml);
                 temp.body.setMaterial(mat1);
                 temp.id = temp.body.getName();
@@ -465,6 +492,7 @@ public class Main extends SimpleApplication {
             }
             if (name.equals("Pause") && !keyPressed) {
                 isRunning = !isRunning;
+                score = curScore;
             }
             if (isRunning) {
                 if (name.equals("Shoot") && !keyPressed) {
@@ -493,16 +521,22 @@ public class Main extends SimpleApplication {
                             if (temp.id.equals(hit)) {
                                 CollisionResult closest = results.getClosestCollision();
                                 Material material = closest.getGeometry().getMaterial();
-                                if(temp.scored){
-                                    
-                                    curHealth+= 1;
-                                    curScore += 20;
-                                    
-                                }
-                                else{
-                                    guiNode.attachChild(wrongHit);
+                                if (checkMatch(temp.character)) {
+                                        guiNode.attachChild(wrongHit);
                                     time = timer.getTimeInSeconds();
                                     curHealth -= 5;
+                                    if (curHealth < 0) {
+                                        isRunning = false;
+                                        score = curScore;
+                                    }    
+                                    
+
+                                } else {
+                                curHealth += 1;
+                                    if (curHealth > 100) {
+                                        curHealth = 100;
+                                    }
+                                    curScore += 20;
                                 }
                                 //shootables.detachChild(closest.getGeometry());
                                 System.out.println("A HIT IS A MATCH");
@@ -518,7 +552,7 @@ public class Main extends SimpleApplication {
 
                         // shootables.getChild(hit).move(0, 0, -5f);
                         curScore++;
-       
+
                     }
                 }
             }
@@ -568,17 +602,17 @@ public class Main extends SimpleApplication {
         guiNode.attachChild(ch);
     }
     float time = 0;
-   protected void initWrong() {
-       
+
+    protected void initWrong() {
+
         guiFont = assetManager.loadFont("Interface/Fonts/Default.fnt");
-       wrongHit = new BitmapText(guiFont, false);
+        wrongHit = new BitmapText(guiFont, false);
         wrongHit.setSize(guiFont.getCharSet().getRenderedSize() * 8);
         wrongHit.setText("x"); // crosshairs
         wrongHit.setColor(ColorRGBA.Red);
         wrongHit.setLocalTranslation( // center
                 settings.getWidth() / 2 - guiFont.getCharSet().getRenderedSize() / 3 * 2,
                 settings.getHeight() / 2 + wrongHit.getLineHeight() / 2, 0);
-        
+
     }
-  
 }

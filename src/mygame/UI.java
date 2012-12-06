@@ -1,8 +1,6 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
-package UI;
+package mygame;
+
+
 
 //import java.sql.Array;
 import java.lang.reflect.Array;
@@ -17,16 +15,15 @@ import java.util.List;
 import javax.swing.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import mygame.Main;
-//import net.proteanit.sql.DbUtils;
 import net.proteanit.sql.DbUtils;
 
 /**
  *
  * @author James Le
  */
+
 public class UI extends javax.swing.JFrame {
-    Main test = new Main();
+
     Connection conn = null;
     ResultSet rs = null;
     Statement stat = null;
@@ -35,7 +32,7 @@ public class UI extends javax.swing.JFrame {
     private int Vehicle = 0;
     private int Object = 1, Animal = 2, People = 3,
             Flowers = 4, UserDefined = 5, Default = 6;
-    public List<String> Words = new ArrayList();
+    public static List<String> Words = new ArrayList();
 
     /**
      * Creates new form UI
@@ -788,6 +785,17 @@ public class UI extends javax.swing.JFrame {
         else{
             getWords();
             System.out.println("PlayGame");
+              Thread t = new Thread(new Runnable() {
+    @Override
+    public void run() {
+        Main test = new Main();
+        Main.startMe(Words);
+    }
+});
+t.start();
+            
+            
+            //test.startMe();
         }
     }//GEN-LAST:event_PlayActionPerformed
 
