@@ -31,6 +31,11 @@ import com.jme3.system.AppSettings;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
@@ -45,6 +50,7 @@ import java.util.Random;
  */
 public class Main extends SimpleApplication {
 
+    static String user;
     Boolean isRunning = true;
     Node shootables;
     Node keep;
@@ -69,8 +75,9 @@ public class Main extends SimpleApplication {
     BitmapText pauseText;
     ArrayList<Boxer> boxList = new ArrayList<Boxer>();
     int howManySent = 0;
-    
-    
+    Connection conn = null;
+    ResultSet rs = null;
+    Statement stat = null;
     String alphabet = "abcdefghijklmopqrstuvwxyz";
     //String seen = "";
     boolean ifSeen[];
@@ -78,32 +85,47 @@ public class Main extends SimpleApplication {
     public static int score;
     public static int wordCount = 0;
     public static int timePlayed = 0;
+
     public Main() {
         super();
 
     }
 
     private class Boxer {
+
         char character;
         String id;
-       // boolean scored = false;
+        // boolean scored = false;
         Geometry body;
         float moved = 0;
         Vector3f position;
     }
-static List<String> Words;
-   
-    public static void startMe(List<String> words) {
+    static List<String> Words;
+
+    void setUPdb() {
+        try {
+            Class.forName("org.sqlite.JDBC");
+        } catch (ClassNotFoundException ex) {
+            Logger.getLogger(UI.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        try {
+            conn = DriverManager.getConnection("jdbc:sqlite:wordGame.db");
+        } catch (SQLException ex) {
+            Logger.getLogger(UI.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    public static void startMe(List<String> words, String name) {
         curWord = words.get(wordCount);
         Main app = new Main();
-
+        user = name;
         AppSettings cfg = new AppSettings(false);
 
         cfg.setFrameRate(60); // set to less than or equal screen refresh rate
         cfg.setVSync(true);   // prevents page tearing
 //cfg.setFrequency(60); // set to screen refresh rate
-        cfg.setResolution(1024, 768);
-        cfg.setFullscreen(false);
+        cfg.setResolution(1366, 768);
+        cfg.setFullscreen(true);
         cfg.setSamples(2);    // anti-aliasing
         cfg.setTitle("skyWord - Pre-Alpha Release v.0.0012"); // branding: window name
         try {
@@ -129,15 +151,16 @@ static List<String> Words;
 
     }
     int last = 0;
-    boolean checkMatch(char check){
-        for (int i = 0;i<curWord.length();i++){
-            if(curWord.charAt(i)==check){
-               // ifSeen[i] = true;
+
+    boolean checkMatch(char check) {
+        for (int i = 0; i < curWord.length(); i++) {
+            if (curWord.charAt(i) == check) {
+                // ifSeen[i] = true;
                 last = i;
                 return true;
             }
         }
-        
+
         return false;
     }
 //    void setPositions(int _count) {
@@ -165,13 +188,13 @@ static List<String> Words;
      * A cube object for target practice
      */
     int k = 0;
-    
+
     protected Geometry makeCube(int i, char type, boolean real) {
-       int k =0;
+        int k = 0;
         Boxer temp = new Boxer();
         temp.character = type;
         temp.moved = 0f;
-       // temp.scored = real;
+        // temp.scored = real;
         temp.position = new Vector3f();
         if (i % 2 == 0) {
             temp.position.x = -k;
@@ -203,9 +226,24 @@ static List<String> Words;
         // System.out.println("Number of cube added: " + shootables.getQuantity());
     }
 
+    public void updateScore() {
+
+        System.out.println("UpdateScore");
+        try {
+            stat = conn.createStatement();
+            rs = stat.executeQuery("INSERT INTO ScoreBank ( Score, PlayerID, NumWordsCorrect, Time ) VALUES ( " + curScore
+                    + ",( SELECT PlayerID FROM PlayerBank WHERE PlayerName = '" + user + "' ),"
+                    + wordCount + "," + timer.getTimeInSeconds() + ");");
+            rs.close();
+        } catch (SQLException ex) {
+            Logger.getLogger(UI.class.getName()).log(Level.SEVERE, null, ex);
+            System.out.println("UpdateScore Error line 757");
+        }
+    }
+
     @Override
     public void simpleInitApp() {
-
+        setUPdb();
         word = 5;
         initCrossHairs(); // a "+" in the middle of the screen to help aiming
         initKeys();       // load custom key mappings
@@ -299,7 +337,7 @@ static List<String> Words;
 
         pauseText = new BitmapText(guiFont, false);
         pauseText.setSize(guiFont.getCharSet().getRenderedSize() * 4);
-        pauseText.setText("---PAUSED---");
+        pauseText.setText("---YOU LOSE---");
         pauseText.setLocalTranslation(
                 settings.getWidth() / 2 - pauseText.getLineWidth() / 2, settings.getHeight() - pauseText.getLineHeight(), 0);
         // Box b = new Box(5, 5, 5);
@@ -307,46 +345,72 @@ static List<String> Words;
         //  Material mat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
 
     }
- 
+
     public boolean checkWin() {
         int count = 0;
         for (int i = 0; i < curWord.length(); i++) {
-            if (ifSeen[i]) { count++;}
+            if (ifSeen[i]) {
+                count++;
+            }
         }
         if (count == curWord.length() - 1) {
             wordCount++;
             //TODO - increment word
+            updateWord();
+
             return true;
         }
         return false;
     }
 
+    void updateWord() {
+        curWord = UI.Words.get(wordCount);
+        ifSeen = new boolean[curWord.length()];
+        for (int i = 0; i < curWord.length(); i++) {
+            ifSeen[i] = false;
+        }
+    }
+
+    
+       float moveSpeed = 0.05f;
+    boolean increase = false;
+     boolean increase2 = false;
+     
     @Override
     public void simpleUpdate(float tpf) {
         if (isRunning) {
+            System.out.println("Current time: "+ timer.getTimeInSeconds());
+            if(timer.getTimeInSeconds()>10&&!increase){
+                moveSpeed+=0.05;
+                increase = true;
+            }
+            if(timer.getTimeInSeconds()>20&&!increase2){
+                moveSpeed+=0.05;
+                increase2 = true;
+            }
             if (time != 0 && (time + 20) > timer.getTimeInSeconds()) {
                 wrongHit.removeFromParent();
                 time = 0;
             }
             pauseText.removeFromParent();
             for (int i = 0; i < shootables.getQuantity(); i++) {
-                shootables.getChild(i).move(0f, 0f, 0.05f);
+                shootables.getChild(i).move(0f, 0f, moveSpeed);
                 boxList.get(i).moved += 0.05f;
                 if (boxList.get(i).moved >= 18.0f) {
-                    
-                    
-                   // boxList.get(i).moved = 0;
+
+
+                    // boxList.get(i).moved = 0;
                     //shootables.getChild(i).move(0f, 0f, -18f);
                     if (checkMatch(boxList.get(i).character)) {
-                        
-                        
+
+
                         ifSeen[last] = true;
                         curScore += 100;
                         curHealth += 1;
                         if (curHealth >= 100) {
                             curHealth = 100;
                         }
-                        if(checkWin()){
+                        if (checkWin()) {
                             System.out.println("NEXT WORD!");
                         }
                     } else {
@@ -355,10 +419,19 @@ static List<String> Words;
                         if (curHealth <= 0) {
                             curHealth = 0;
                             isRunning = false;
-                            score= curScore;
+                            score = curScore;
+                            //  UI.numCorrect = wordCount;
+                            // UI.scoreRecord = score;
+                            //UI.timeRecord = timer.getTimeInSeconds();
                             /**
                              * Uses Texture from jme3-test-data library!
                              */
+                            updateScore();
+                            try {
+                                conn.close();
+                            } catch (SQLException ex) {
+                                Logger.getLogger(UI.class.getName()).log(Level.SEVERE, null, ex);
+                            }
                             ParticleEmitter fire = new ParticleEmitter("Emitter", ParticleMesh.Type.Triangle, 30);
                             Material mat_red = new Material(assetManager, "Common/MatDefs/Misc/Particle.j3md");
                             //mat_red.setTexture("Texture", assetManager.loadTexture("Effects/Explosion/flame.png"));
@@ -400,19 +473,18 @@ static List<String> Words;
 
         }
     }
-    
 
     private char getLetter() {
-         char nextLetter;
+        char nextLetter;
         Random r = new Random();
-        if (r.nextBoolean() ) {
+        if (r.nextBoolean()) {
             int tempInt = r.nextInt(curWord.length());
             nextLetter = curWord.toLowerCase().charAt(tempInt);
             while (ifSeen[tempInt]) {
                 tempInt = r.nextInt(curWord.length());
                 nextLetter = curWord.toLowerCase().charAt(tempInt);
             }
-            
+
             System.out.println("Real box " + nextLetter + " was made");
             howManySent++;
             return nextLetter;
@@ -439,7 +511,7 @@ static List<String> Words;
                 boxList.remove(check);
                 int i = Integer.parseInt(temp.id);
                 temp.moved = 0f;
-               // temp.scored = getLetter();
+                // temp.scored = getLetter();
                 temp.character = getLetter();
                 temp.position = new Vector3f();
                 if (i % 2 == 0) {
@@ -522,17 +594,17 @@ static List<String> Words;
                                 CollisionResult closest = results.getClosestCollision();
                                 Material material = closest.getGeometry().getMaterial();
                                 if (checkMatch(temp.character)) {
-                                        guiNode.attachChild(wrongHit);
+                                    guiNode.attachChild(wrongHit);
                                     time = timer.getTimeInSeconds();
                                     curHealth -= 5;
                                     if (curHealth < 0) {
                                         isRunning = false;
                                         score = curScore;
-                                    }    
-                                    
+                                    }
+
 
                                 } else {
-                                curHealth += 1;
+                                    curHealth += 1;
                                     if (curHealth > 100) {
                                         curHealth = 100;
                                     }

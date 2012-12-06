@@ -23,7 +23,11 @@ import net.proteanit.sql.DbUtils;
  */
 
 public class UI extends javax.swing.JFrame {
-
+    //Adrian Score
+    public static int scoreRecord = 0;
+    public static float timeRecord = 0;
+    public static int numCorrect = 0;
+    public static String playerRecord = "";
     Connection conn = null;
     ResultSet rs = null;
     Statement stat = null;
@@ -788,8 +792,13 @@ public class UI extends javax.swing.JFrame {
               Thread t = new Thread(new Runnable() {
     @Override
     public void run() {
+                      try {
+                          conn.close();
+                      } catch (SQLException ex) {
+                          Logger.getLogger(UI.class.getName()).log(Level.SEVERE, null, ex);
+                      }
         Main test = new Main();
-        Main.startMe(Words);
+        Main.startMe(Words, CurrentPlayer);
     }
 });
 t.start();
@@ -826,6 +835,7 @@ t.start();
     private void AddPlayerButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_AddPlayerButtonActionPerformed
         // TODO add your handling code here:
         String str = NewPlayerField.getText();
+        playerRecord = str;
         boolean allowScore = false;
         if (str.startsWith(" ")) {
             System.out.println("Don't work!");
@@ -848,18 +858,18 @@ t.start();
             CurrentPlayer = str;
         }
         if (allowScore == true) {
-            updateScore(0, str, 0, 0);
+            updateScore();
         }
 
     }//GEN-LAST:event_AddPlayerButtonActionPerformed
-    public void updateScore(int Score, String CurrentUser, int wordscorrect, int time) {
-        String str = CurrentUser;
+    public void updateScore() {
+        
         System.out.println("UpdateScore");
         try {
             stat = conn.createStatement();
-            rs = stat.executeQuery("INSERT INTO ScoreBank ( Score, PlayerID, NumWordsCorrect, Time ) VALUES ( " + Score
-                    + ",( SELECT PlayerID FROM PlayerBank WHERE PlayerName = '" + str + "' ),"
-                    + wordscorrect + "," + time + ");");
+            rs = stat.executeQuery("INSERT INTO ScoreBank ( Score, PlayerID, NumWordsCorrect, Time ) VALUES ( " + scoreRecord
+                    + ",( SELECT PlayerID FROM PlayerBank WHERE PlayerName = '" + playerRecord + "' ),"
+                    + numCorrect + "," + timeRecord + ");");
             rs.close();
         } catch (SQLException ex) {
             Logger.getLogger(UI.class.getName()).log(Level.SEVERE, null, ex);
