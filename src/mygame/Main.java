@@ -31,6 +31,7 @@ import com.jme3.system.AppSettings;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
@@ -42,7 +43,7 @@ import java.util.Random;
  * @author normenhansen
  */
 public class Main extends SimpleApplication {
-    
+
     Boolean isRunning = true;
     Node shootables;
     Node keep;
@@ -68,24 +69,27 @@ public class Main extends SimpleApplication {
     ArrayList<Boxer> boxList = new ArrayList<Boxer>();
     int howManySent = 0;
     String alphabet = "abcdefghijklmopqrstuvwxyz";
-    
+    //String seen = "";
+    boolean ifSeen[];
+
     private class Boxer {
-        
+
         String id;
         boolean scored = false;
         Geometry body;
         float moved = 0;
         Vector3f position;
     }
-    
+
     public static void main(String[] args) {
 
 
         //Main app = new Main();
         Main app = new Main();
-        
+
         AppSettings cfg = new AppSettings(false);
-//cfg.setFrameRate(60); // set to less than or equal screen refresh rate
+
+        cfg.setFrameRate(60); // set to less than or equal screen refresh rate
         cfg.setVSync(true);   // prevents page tearing
 //cfg.setFrequency(60); // set to screen refresh rate
         cfg.setResolution(1024, 768);
@@ -104,12 +108,12 @@ public class Main extends SimpleApplication {
         app.setSettings(cfg);
         app.setDisplayFps(false);
         app.setDisplayStatView(false);
-      
-       // app.setShowSettings(false);
+
+        // app.setShowSettings(false);
         app.start();
-       
-        
-        
+
+
+
     }
 //    void setPositions(int _count) {
 //
@@ -136,7 +140,7 @@ public class Main extends SimpleApplication {
      * A cube object for target practice
      */
     int k = 0;
-    
+
     protected Geometry makeCube(int i, char type, boolean real) {
         Boxer temp = new Boxer();
         temp.moved = 0f;
@@ -151,7 +155,7 @@ public class Main extends SimpleApplication {
         temp.position.y = starty;
         temp.position.z = startz;
         Box box = new Box(temp.position, boxSize, boxSize, boxSize);
-        
+
         temp.body = new Geometry(i + "", box);
         Material mat1 = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         Texture tex_ml;
@@ -171,11 +175,11 @@ public class Main extends SimpleApplication {
         return temp.body;
         // System.out.println("Number of cube added: " + shootables.getQuantity());
     }
-    
+
     @Override
     public void simpleInitApp() {
-        
-        word = 7;
+
+        word = 5;
         initCrossHairs(); // a "+" in the middle of the screen to help aiming
         initKeys();       // load custom key mappings
         initMark();       // a red sphere to mark the hit
@@ -192,8 +196,8 @@ public class Main extends SimpleApplication {
         DirectionalLight sun = new DirectionalLight();
         sun.setDirection(new Vector3f(-0.1f, -0.7f, -1.0f));
         rootNode.addLight(sun);
-        
-        
+
+
         rootNode.attachChild(shootables);
         rootNode.attachChild(keep);
         /*
@@ -201,13 +205,21 @@ public class Main extends SimpleApplication {
          */
         char temp;
         Geometry tempGeo;
+        ifSeen = new boolean[curWord.length()];
         for (int i = 0; i < word; i++) {
             Random r = new Random();
             if (r.nextBoolean()) {
-                temp = curWord.charAt(r.nextInt(curWord.length()));
+                int tempInt = r.nextInt(curWord.length());
+                temp = curWord.toLowerCase().charAt(tempInt);
+                while (ifSeen[tempInt]) {
+                    tempInt = r.nextInt(curWord.length());
+                    temp = curWord.toLowerCase().charAt(tempInt);
+                }
+                ifSeen[tempInt] = true;
                 tempGeo = makeCube(i, temp, true);
                 shootables.attachChild(tempGeo);
                 System.out.println("Real box " + temp + " was made. name: " + tempGeo.getName());
+
                 howManySent++;
             } else {
                 temp = alphabet.charAt(r.nextInt(alphabet.length()));
@@ -217,16 +229,16 @@ public class Main extends SimpleApplication {
                 tempGeo = makeCube(i, temp, false);
                 shootables.attachChild(tempGeo);
                 System.out.println("Fake box " + temp + " was made. hash: " + tempGeo.getName());
-                
+
             }
         }
-        
+
         keep.attachChild(makeFloor());
 
         /*
          * Setting the GUI
          */
-        
+
         guiFont = assetManager.loadFont("Interface/Fonts/Default.fnt");
         nodeHealth = new BitmapText(guiFont, true);
         nodeScore = new BitmapText(guiFont, true);
@@ -256,7 +268,7 @@ public class Main extends SimpleApplication {
         guiNode.attachChild(nodeHealth);
         guiNode.attachChild(nodeWord);
         guiFont = assetManager.loadFont("Interface/Fonts/Default.fnt");
-        
+
         pauseText = new BitmapText(guiFont, false);
         pauseText.setSize(guiFont.getCharSet().getRenderedSize() * 4);
         pauseText.setText("---PAUSED---");
@@ -267,11 +279,24 @@ public class Main extends SimpleApplication {
         //  Material mat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
 
     }
-    
+
+    public boolean checkWin() {
+        int count = 0;
+        for (int i = 0; i < curWord.length(); i++) {
+            if (ifSeen[i]) {
+                count++;
+            }
+        }
+        if (count == curWord.length() - 1) {
+            return true;
+        }
+        return false;
+    }
+
     @Override
     public void simpleUpdate(float tpf) {
         if (isRunning) {
-            
+
             pauseText.removeFromParent();
             for (int i = 0; i < shootables.getQuantity(); i++) {
                 shootables.getChild(i).move(0f, 0f, 0.05f);
@@ -311,11 +336,11 @@ public class Main extends SimpleApplication {
                             fire.getParticleInfluencer().setVelocityVariation(0.3f);
                             fire.setLocalTranslation(0f, -2f, 0f);
                             rootNode.attachChild(fire);
-                            
+
                         }
                     }
                 }
-                
+
             }
             nodeScore.setLocalTranslation(
                     settings.getWidth() - nodeScore.getLineWidth(),
@@ -330,10 +355,79 @@ public class Main extends SimpleApplication {
              */
             // guiNode.detachAllChildren();
             guiNode.attachChild(pauseText);
-            
+
         }
     }
-    
+    char nextLetter;
+
+    private boolean getLetter() {
+        Random r = new Random();
+        if (r.nextBoolean() && !checkWin()) {
+            int tempInt = r.nextInt(curWord.length());
+            nextLetter = curWord.toLowerCase().charAt(tempInt);
+            while (ifSeen[tempInt]) {
+                tempInt = r.nextInt(curWord.length());
+                nextLetter = curWord.toLowerCase().charAt(tempInt);
+            }
+            ifSeen[tempInt] = true;
+            System.out.println("Real box " + nextLetter + " was made");
+            howManySent++;
+            return true;
+        } else {
+            nextLetter = alphabet.charAt(r.nextInt(alphabet.length()));
+            while (curWord.contains(nextLetter + "")) {
+                nextLetter = alphabet.charAt(r.nextInt(alphabet.length()));
+            }
+            System.out.println("Fake box " + nextLetter + " was made.");
+        }
+        return false;
+    }
+
+    private Geometry setWord(String input) {
+        Iterator it = boxList.iterator();
+        k = 0;
+        
+        while (it.hasNext()) {
+            Boxer check = (Boxer) it.next();
+            if (check.id.equals(input)) {
+                Boxer temp = new Boxer();
+     
+                temp = check;
+                boxList.remove(check);
+                int i = Integer.parseInt(temp.id);
+                temp.moved = 0f;
+                temp.scored = getLetter();
+                temp.position = new Vector3f();
+                if (i % 2 == 0) {
+                    if(i==0){
+                        temp.position.x =0;
+                    }else{
+                    temp.position.x = -(k+i);
+                    }
+                } else {
+                    k = i + 1;
+                    temp.position.x = k;
+                }
+                temp.position.y = starty;
+                temp.position.z = startz;
+                Box box = new Box(temp.position, boxSize, boxSize, boxSize);
+                System.out.println("New position: "+temp.position);
+                temp.body = new Geometry(i + "", box);
+                Material mat1 = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+                Texture tex_ml;
+                tex_ml = assetManager.loadTexture("Textures/" + nextLetter + ".png");
+                mat1.setTexture("ColorMap", tex_ml);
+                temp.body.setMaterial(mat1);
+                temp.id = temp.body.getName();
+                System.out.println("this box is intially created with name: " + temp.id);
+                boxList.add(temp);
+                return temp.body;
+            }
+        }
+
+        return null;
+    }
+
     private void initKeys() {
         inputManager.addMapping("Pause", new KeyTrigger(KeyInput.KEY_P));
         inputManager.addMapping("Shoot",
@@ -376,11 +470,32 @@ public class Main extends SimpleApplication {
                     }
                     // 5. Use the results (we mark the hit object)
                     if (results.size() > 0) {
+                        Iterator it = boxList.iterator();
+                        while (it.hasNext()) {
+                            Boxer temp = (Boxer) it.next();
+                            if (temp.id.equals(hit)) {
+                                CollisionResult closest = results.getClosestCollision();
+                                Material material = closest.getGeometry().getMaterial();
+                                if(temp.scored){
+                                    curHealth -= 5;
+                                }
+                                else{
+                                    curHealth+= 1;
+                                    curScore += 20;
+                                }
+                                //shootables.detachChild(closest.getGeometry());
+                                System.out.println("A HIT IS A MATCH");
+                                shootables.detachChild(shootables.getChild(hit));
+                                shootables.attachChild(setWord(hit));
+                                // setWord(hit);
+                                break;
+                            }
+                        }
                         // The closest collision point is what was truly hit:
-                        CollisionResult closest = results.getClosestCollision();
-                        Material material = closest.getGeometry().getMaterial();
+
                         //  material.setColor("Color", ColorRGBA.randomColor());
-                        shootables.getChild(hit).move(0, 0, -5f);
+
+                        // shootables.getChild(hit).move(0, 0, -5f);
                         curScore++;
                         // shootables.detachChild(results.getClosestCollision().getGeometry());
                         // rootNode.detachChild(closest.getGeometry());
@@ -401,14 +516,14 @@ public class Main extends SimpleApplication {
      * A floor to show that the "shot" can go through several objects.
      */
     protected Geometry makeFloor() {
-        
+
         Box box = new Box(new Vector3f(0, -4, -5), 15, .2f, 15);
         Geometry floor = new Geometry("the Floor", box);
         Material mat1 = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-          Texture tex_ml;
+        Texture tex_ml;
         tex_ml = assetManager.loadTexture("Textures/floor.jpg");
         mat1.setTexture("ColorMap", tex_ml);
-         floor.setMaterial(mat1);
+        floor.setMaterial(mat1);
         //mat1.setColor("Color", ColorRGBA.Gray);
         floor.setMaterial(mat1);
         return floor;
@@ -439,7 +554,7 @@ public class Main extends SimpleApplication {
                 settings.getHeight() / 2 + ch.getLineHeight() / 2, 0);
         guiNode.attachChild(ch);
     }
-    
+
     void placeItem(Node item, Vector3f spot) {
         //remove item from the inventory
         item.removeFromParent();
