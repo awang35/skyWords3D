@@ -1,5 +1,18 @@
 package mygame;
 
+import java.lang.reflect.Array;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.List;
+import javax.swing.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+//import net.proteanit.sql.DbUtils;
+import net.proteanit.sql.DbUtils;
 import com.jme3.app.SimpleApplication;
 import com.jme3.asset.AssetKey;
 import com.jme3.bullet.control.CharacterControl;
@@ -56,11 +69,11 @@ public class Main extends SimpleApplication {
     Vector3f box1 = new Vector3f(0, 0, 0);
     //float moved[];
     private int word = 0;
-    private Vector3f walkDirection = new Vector3f();
-    private boolean left = false, right = false, up = false, down = false;
     BitmapText nodeWord;
     BitmapText nodeScore;
     BitmapText nodeHealth;
+    BitmapText wrongHit;
+    BitmapText finalScore;
     private int curScore = 0;
     private int curHealth = 100;
     String curWord = "Totallyasrs";
@@ -183,6 +196,7 @@ public class Main extends SimpleApplication {
         initCrossHairs(); // a "+" in the middle of the screen to help aiming
         initKeys();       // load custom key mappings
         initMark();       // a red sphere to mark the hit
+        initWrong();
         //moved = new float[curWord.length()];
         //setPositions(curWord.length());
 
@@ -238,7 +252,7 @@ public class Main extends SimpleApplication {
         /*
          * Setting the GUI
          */
-
+        
         guiFont = assetManager.loadFont("Interface/Fonts/Default.fnt");
         nodeHealth = new BitmapText(guiFont, true);
         nodeScore = new BitmapText(guiFont, true);
@@ -296,14 +310,17 @@ public class Main extends SimpleApplication {
     @Override
     public void simpleUpdate(float tpf) {
         if (isRunning) {
-
+            if(time!=0&&(time+20)>timer.getTimeInSeconds()){
+               wrongHit.removeFromParent();
+                time =0;
+            }
             pauseText.removeFromParent();
             for (int i = 0; i < shootables.getQuantity(); i++) {
                 shootables.getChild(i).move(0f, 0f, 0.05f);
                 boxList.get(i).moved += 0.05f;
-                if (boxList.get(i).moved >= 15.0f) {
+                if (boxList.get(i).moved >= 18.0f) {
                     boxList.get(i).moved = 0;
-                    shootables.getChild(i).move(0f, 0f, -15f);
+                    shootables.getChild(i).move(0f, 0f, -18f);
                     if (boxList.get(i).scored) {
                         curScore += 10;
                         curHealth += 1;
@@ -477,11 +494,15 @@ public class Main extends SimpleApplication {
                                 CollisionResult closest = results.getClosestCollision();
                                 Material material = closest.getGeometry().getMaterial();
                                 if(temp.scored){
-                                    curHealth -= 5;
-                                }
-                                else{
+                                    
                                     curHealth+= 1;
                                     curScore += 20;
+                                    
+                                }
+                                else{
+                                    guiNode.attachChild(wrongHit);
+                                    time = timer.getTimeInSeconds();
+                                    curHealth -= 5;
                                 }
                                 //shootables.detachChild(closest.getGeometry());
                                 System.out.println("A HIT IS A MATCH");
@@ -497,15 +518,7 @@ public class Main extends SimpleApplication {
 
                         // shootables.getChild(hit).move(0, 0, -5f);
                         curScore++;
-                        // shootables.detachChild(results.getClosestCollision().getGeometry());
-                        // rootNode.detachChild(closest.getGeometry());
-                        //material.setColor("Color", ColorRGBA.randomColor());
-                        // Let's interact - we mark the hit with a red dot.
-                        //  mark.setLocalTranslation(closest.getContactPoint());
-                        // rootNode.attachChild(mark);
-                    } else {
-                        // No hits? Then remove the red mark.
-                        rootNode.detachChild(mark);
+       
                     }
                 }
             }
@@ -554,15 +567,18 @@ public class Main extends SimpleApplication {
                 settings.getHeight() / 2 + ch.getLineHeight() / 2, 0);
         guiNode.attachChild(ch);
     }
-
-    void placeItem(Node item, Vector3f spot) {
-        //remove item from the inventory
-        item.removeFromParent();
-        // attach it back to the shootables node so it can be placed again
-        shootables.attachChild(item);
-        // re-do the scaling
-        item.setLocalScale(.2f);
-        //place the item where the shot hit but a bit higher so the feet just touch the ground
-        item.setLocalTranslation(spot.x, spot.y + 1.35f, spot.z);
+    float time = 0;
+   protected void initWrong() {
+       
+        guiFont = assetManager.loadFont("Interface/Fonts/Default.fnt");
+       wrongHit = new BitmapText(guiFont, false);
+        wrongHit.setSize(guiFont.getCharSet().getRenderedSize() * 8);
+        wrongHit.setText("x"); // crosshairs
+        wrongHit.setColor(ColorRGBA.Red);
+        wrongHit.setLocalTranslation( // center
+                settings.getWidth() / 2 - guiFont.getCharSet().getRenderedSize() / 3 * 2,
+                settings.getHeight() / 2 + wrongHit.getLineHeight() / 2, 0);
+        
     }
+  
 }
