@@ -7,6 +7,8 @@ import com.jme3.bullet.control.GhostControl;
 import com.jme3.bullet.control.RigidBodyControl;
 import com.jme3.collision.CollisionResults;
 import com.jme3.collision.CollisionResult;
+import com.jme3.effect.ParticleEmitter;
+import com.jme3.effect.ParticleMesh;
 import com.jme3.font.BitmapText;
 import com.jme3.input.KeyInput;
 import com.jme3.input.MouseInput;
@@ -81,6 +83,7 @@ public class Main extends SimpleApplication {
 
         //Main app = new Main();
         Main app = new Main();
+        
         AppSettings cfg = new AppSettings(false);
 //cfg.setFrameRate(60); // set to less than or equal screen refresh rate
         cfg.setVSync(true);   // prevents page tearing
@@ -99,8 +102,12 @@ public class Main extends SimpleApplication {
         cfg.setSettingsDialogImage("Interface/splash.png");
 //app.setShowSettings(false); // or don't display splashscreen
         app.setSettings(cfg);
+        app.setDisplayFps(false);
+        app.setDisplayStatView(false);
+      
+       // app.setShowSettings(false);
         app.start();
-        app.start();
+       
         
         
     }
@@ -280,7 +287,32 @@ public class Main extends SimpleApplication {
                         }
                     } else {
                         curScore -= 1;
-                        curHealth -= 10;
+                        curHealth -= 20;
+                        if (curHealth < 0) {
+                            curHealth = 0;
+                            isRunning = false;
+                            /**
+                             * Uses Texture from jme3-test-data library!
+                             */
+                            ParticleEmitter fire = new ParticleEmitter("Emitter", ParticleMesh.Type.Triangle, 30);
+                            Material mat_red = new Material(assetManager, "Common/MatDefs/Misc/Particle.j3md");
+                            //mat_red.setTexture("Texture", assetManager.loadTexture("Effects/Explosion/flame.png"));
+                            fire.setMaterial(mat_red);
+                            fire.setImagesX(1);
+                            fire.setImagesY(1); // 2x2 texture animation
+                            fire.setEndColor(new ColorRGBA(1f, 0f, 0f, 1f));   // red
+                            fire.setStartColor(new ColorRGBA(1f, 1f, 0f, 0.5f)); // yellow
+                            fire.getParticleInfluencer().setInitialVelocity(new Vector3f(0, 2, 0));
+                            fire.setStartSize(0.6f);
+                            fire.setEndSize(0.1f);
+                            fire.setGravity(0f, 0f, 0f);
+                            fire.setLowLife(0.5f);
+                            fire.setHighLife(3f);
+                            fire.getParticleInfluencer().setVelocityVariation(0.3f);
+                            fire.setLocalTranslation(0f, -2f, 0f);
+                            rootNode.attachChild(fire);
+                            
+                        }
                     }
                 }
                 
@@ -373,7 +405,11 @@ public class Main extends SimpleApplication {
         Box box = new Box(new Vector3f(0, -4, -5), 15, .2f, 15);
         Geometry floor = new Geometry("the Floor", box);
         Material mat1 = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        mat1.setColor("Color", ColorRGBA.Gray);
+          Texture tex_ml;
+        tex_ml = assetManager.loadTexture("Textures/floor.jpg");
+        mat1.setTexture("ColorMap", tex_ml);
+         floor.setMaterial(mat1);
+        //mat1.setColor("Color", ColorRGBA.Gray);
         floor.setMaterial(mat1);
         return floor;
     }
